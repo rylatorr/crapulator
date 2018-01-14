@@ -9,41 +9,14 @@
 # 3) boot, ssh to pi, copy this script to the pi and run it as root (sudo su) or curl -sSL https://raw.github.com/rylatorr/ghettoCradle/master/ghettocradle.sh | bash
 
 # Variables
-TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
-
-# If the color table file exists,
-if [[ -f "${coltable}" ]]; then
-  # source it
-  source ${coltable}
-# Othwerise,
-else
-  # Set these values so the installer can still run in color
-  COL_NC='\e[0m' # No Color
-  COL_LIGHT_GREEN='\e[1;32m'
-  COL_LIGHT_RED='\e[1;31m'
-  TICK="[${COL_LIGHT_GREEN}✓${COL_NC}]"
-  CROSS="[${COL_LIGHT_RED}✗${COL_NC}]"
-  INFO="[i]"
-  # shellcheck disable=SC2034
-  DONE="${COL_LIGHT_GREEN} done!${COL_NC}"
-  OVER="\\r\\033[K"
-fi
-
-# Must be root to install
-local str="Root user check"
-echo ""
 
 # If the user's id is zero,
 if [[ "${EUID}" -eq 0 ]]; then
   # they are root and all is good
-  echo -e "${TICK} ${str}"
-# Otherwise,
+  echo "Beginning setup"
 else
-  # They do not have enough privileges, so let the user know
-  echo -e "  ${CROSS} ${str}
-    ${COL_LIGHT_RED}Script called with non-root privileges${COL_NC}
-    You need elevated privleges to install and run"
-  exit(0)
+  echo "Script called with non-root privileges. Become root with sudo su"
+  exit 1
 fi
 
 # Update apt and install packages
@@ -131,8 +104,8 @@ EOF
 # Enable ip forwarding by uncommenting net.ipv4.ip_forward=1 
 sed -i '/^#.*net.ipv4.ip_forward=1/s/^#//' /etc/sysctl.conf
 
-# Add config to /etc/dhcp/dhcpd.conf
-tee -a /etc/dhcp/dhcpd.conf << EOF
+# replace config for /etc/dhcp/dhcpd.conf
+tee /etc/dhcp/dhcpd.conf << EOF
 
 # Configuration file for ISC dhcpd for Debian
 ddns-update-style none;
@@ -164,8 +137,9 @@ EOF
 # Enable ISC DHCP server to run on eth0 and eth1 (mgmt interface)
 sed -i '/^INTERFACESv4=.*/c\INTERFACESv4="eth0 eth1"' /etc/default/isc-dhcp-server
 
-# Enable DHCP server
+# Enable & start DHCP server
 update-rc.d isc-dhcp-server enable
+service isc-dhcp-server start
 
 # Scripts for easy demo of WAN brownout
 tee -a /home/pi/bad-performance.sh << EOF
