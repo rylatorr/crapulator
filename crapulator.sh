@@ -98,6 +98,19 @@ exit 0
 
 EOF
 
+# Newer/better hack for isc-dhcp-server issue
+cp /run/systemd/generator.late/isc-dhcp-server.service /etc/systemd/system
+sed -i 's/Restart=no/Restart=on-failure/g' /etc/systemd/system
+tee -a /etc/systemd/system << EOF
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl disable isc-dhcp-server
+systemctl enable isc-dhcp-server
+
 # Enable ip forwarding by uncommenting net.ipv4.ip_forward=1
 sed -i '/^#.*net.ipv4.ip_forward=1/s/^#//' /etc/sysctl.conf
 
@@ -158,3 +171,6 @@ chmod +x /home/pi/bad-performance.sh /home/pi/good-performance.sh
 # Configure a recognizable hostname
 sed -i 's/raspberrypi/crapulator/g' /etc/hostname
 sed -i "s/127.0.1.1.*raspberrypi/127.0.1.1\tcrapulator/g" /etc/hosts
+
+# Finish up
+echo "Setup complete. Reboot."
